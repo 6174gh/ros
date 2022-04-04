@@ -86,24 +86,7 @@ A ROS node that receives information is called a subscriber. It's subscribed to 
 
 And the subscriber node "reads from" one or more ROS topics with each subscription processed via a respective callback function.
 
-### Nodes - Service
 
-1. Request - Response Communication
-
-```
-rosservice list
-rosservice call
-```
-
-'---' indicate demarkation
-service server and service client
-
-Block program flow
-Useful in sequential behaviour
-
-Services are defined in the same package as messages,
-
-### Nodes - Action
 
 ### Topic
 
@@ -146,9 +129,151 @@ We want to construct a new message type called SensorInformation. It should cont
 
 Create the following file: $HOME/hrwros_ws/src/hrwros/hrwros_msgs/msg/SensorInformation.msg.
 
-It will contain the following:
-sensor_msgs/Range sensor_data
-string maker_name
-uint32 part_number
 
+```text
+# Example message file
+sensor_msgs/Range sensor_data # placeholder for the ROS message type for interfacing with distance sensors
+string maker_name             # placeholder for manufacturer name
+uint32 part_number            # placeholder for part number of the sensor
+```
 We can see something really interesting here: We use an already derived message, sensor_msgs/Range, and simply add a string and an integer to it. So we can create new message types using already existing derived message types! This idea of stacking is really useful in ROS, since you can easily re-use what already exists. So in the above example, the sensor_msgs/Range already contains everything we need from the range sensor itself, and we only add the maker name and the part number.
+First, navigate to the folder where ROS message types are defined:
+
+
+```
+$ roscd hrwros_msgs
+$ cd msg
+```
+Then, create the messagefile:
+$ touch SensorInformation.msg
+
+You can see all created message types by typing
+$ rosmsg show sensor_msgs/
+and hitting the Tab key.
+
+Since we will need the Range type, enter
+$ rosmsg show sensor_msgs/Range
+and you will see what the Range message type consists of.
+
+In the following example, we will create our own message type.
+
+    Create the file and contents as shown below:
+        Detail the data types the message type will contain
+        And then some comments detailing the data entries
+    Make sure to add the name to the add_message_files section in the CMakeLists.txt file
+    Finally, run the catkin build command
+
+### Building First ROS Application
+
+### Publishing node and subscriber with custom message type
+
+### Nodes - Service
+
+1. Request - Response Communication
+
+```
+rosservice list
+rosservice call
+```
+
+'---' indicate demarkation
+service server and service client
+
+Block program flow
+Useful in sequential behaviour
+
+Services are defined in the same package as messages,
+
+### Nodes - Action
+
+
+We don't always want blocking execution. ROS Actions allow non-blocking execution. This way, multiple things can happen at the same time. They are a generalized request-response system (as for services): a client-server infrastructure. Actions are defined by three message types:
+
+    A goal (request),
+    The result (response),
+    And feedback.
+
+There are a few ROS commands to interact with actions:
+
+Generate action messages manually: 
+$ rosrun actionlib_msgs genaction.py <path_to_action_file>
+Show the contents of an action message: 
+$ rosmsg show <stack_name>_msgs/<ActionMessage>
+
+ROS actions have a few functions available to process requests:
+
+    The goalCallback function processes a goal request.
+    Goal statuses: ACTIVE, SUCCEEDED, ABORTED.
+
+Nomenclature:
+
+    Action server: A ROS node that advertises an action, so that other nodes can request action goals to be processed.
+    Action client: A ROS node that sends goal requests to the action server.
+
+Code example
+
+Here, we will show the general structure of an action file.
+
+Requirement: Counter with a 1s delay between each increment.
+
+Goal message: Number to count up to (uint32)
+Result message: A status message (string)
+Feedback message: The number of counts completed (uint32)
+```
+uint32 num_counts     # Goal field
+---                   # Separator
+string result_message # Result field
+---                   # Separator
+uint32 counts_elapsed # Feedback field
+```
+
+
+The action generator script displays 7 actions:
+
+    Specified actions:
+
+1) CounterWithDelayFeedback
+2) CounterWithDelayGoal
+3) CounterWithDelayResult
+
+    Additional actions which are used internally by the actionlib package:
+
+4) CounterWithDelayActionFeedback
+5) CounterWithDelayActionGoal
+6) CounterWithDelayAction
+7) CounterWithDelayActionResult
+
+CounterWithDelayAction.msg is an aggregation of the other action messages. This is the action type of our action client
+
+The action client code is something that we as users develop to leverage the facilities of the actionlib ROS package. 
+
+Sent goals are registered by the action server and the actionlib package. The package requires additional information which is CounterWithDelayAction.msg.
+
+Goal contains:
+
+    Timestamp and header info
+    Unique goal identifier
+    Goal message
+
+Action Result contains:
+
+    Timestamp and header info
+    Different states the goal can be in
+
+Feedback contains:
+
+    Timestamp and header info
+    Different states the goal can be in
+    Feedback message
+
+Action server topics
+
+    Feedback topic is published by the action server an has action feedback message type
+    Action server subscribers to the cancel topic and is of the GoalID type
+
+Attention!
+
+    Simple Action Server/Client.
+    Non-blocking execution of ONE goal at a time.
+    New goal to the same action server will pre-empt an active goal. Meaning that the active goal is completed first before a new goal will be processed.
+
